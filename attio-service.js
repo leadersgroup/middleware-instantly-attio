@@ -42,7 +42,7 @@ class AttioService {
       const payload = {
         data: {
           values: {
-            email_addresses: personData.email,
+            email_addresses: [personData.email],
           },
         },
       };
@@ -84,7 +84,7 @@ class AttioService {
       const payload = {
         data: {
           values: {
-            email_addresses: personData.email,
+            email_addresses: [personData.email],
           },
         },
       };
