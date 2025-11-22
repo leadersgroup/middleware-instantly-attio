@@ -56,19 +56,6 @@ class AttioService {
         }];
       }
 
-      // Add custom attributes if they exist in your Attio workspace
-      if (personData.instantlyStatus) {
-        payload.data.values.instantly_status = personData.instantlyStatus;
-      }
-
-      if (personData.campaignName) {
-        payload.data.values.campaign_name = personData.campaignName;
-      }
-
-      if (personData.lastEventDate) {
-        payload.data.values.last_instantly_event = personData.lastEventDate;
-      }
-
       // Use assert endpoint for upsert behavior
       const response = await this.client.put('/objects/people/records', {
         data: {

@@ -30,20 +30,11 @@ class SyncHandler {
           email: event.lead_email,
           firstName: event.first_name || '',
           lastName: event.last_name || '',
-          instantlyStatus: attioStatus,
-          campaignName: event.campaign_name,
-          lastEventDate: event.timestamp,
         });
         console.log(`Created new person in Attio: ${event.lead_email}`);
       } else {
-        // Update existing person
-        const recordId = person.id?.record_id || person.id;
-        await attioService.updatePerson(recordId, {
-          instantly_status: attioStatus,
-          campaign_name: event.campaign_name,
-          last_instantly_event: event.timestamp,
-        });
-        console.log(`Updated person in Attio: ${event.lead_email}`);
+        // Person already exists in Attio
+        console.log(`Person already exists in Attio: ${event.lead_email}`);
       }
 
       // 3. Create activity note for significant events
