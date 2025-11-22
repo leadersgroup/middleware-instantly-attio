@@ -20,15 +20,16 @@ class AttioService {
     try {
       const response = await this.client.post('/objects/people/records/query', {
         filter: {
-          email_addresses: {
-            contains: email,
-          },
+          email_addresses: email,
         },
         limit: 1,
       });
       return response.data.data?.[0] || null;
     } catch (error) {
       console.error('Attio: Error finding person:', error.message);
+      if (error.response?.data) {
+        console.error('Attio API error details:', JSON.stringify(error.response.data));
+      }
       return null;
     }
   }
@@ -41,14 +42,18 @@ class AttioService {
       const payload = {
         data: {
           values: {
-            email_addresses: [{ email_address: personData.email }],
+            email_addresses: personData.email,
           },
         },
       };
 
-      // Add optional fields
+      // Add optional fields - use Attio's name format
       if (personData.firstName || personData.lastName) {
-        payload.data.values.name = `${personData.firstName || ''} ${personData.lastName || ''}`.trim();
+        payload.data.values.name = [{
+          first_name: personData.firstName || '',
+          last_name: personData.lastName || '',
+          full_name: `${personData.firstName || ''} ${personData.lastName || ''}`.trim(),
+        }];
       }
 
       // Add custom attributes if they exist in your Attio workspace
@@ -92,13 +97,17 @@ class AttioService {
       const payload = {
         data: {
           values: {
-            email_addresses: [{ email_address: personData.email }],
+            email_addresses: personData.email,
           },
         },
       };
 
       if (personData.firstName || personData.lastName) {
-        payload.data.values.name = `${personData.firstName || ''} ${personData.lastName || ''}`.trim();
+        payload.data.values.name = [{
+          first_name: personData.firstName || '',
+          last_name: personData.lastName || '',
+          full_name: `${personData.firstName || ''} ${personData.lastName || ''}`.trim(),
+        }];
       }
 
       const response = await this.client.post('/objects/people/records', payload);
@@ -106,6 +115,9 @@ class AttioService {
       return response.data;
     } catch (error) {
       console.error('Attio: Error creating person:', error.message);
+      if (error.response?.data) {
+        console.error('Attio API error details:', JSON.stringify(error.response.data));
+      }
       throw error;
     }
   }
