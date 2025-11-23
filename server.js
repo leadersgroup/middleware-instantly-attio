@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const config = require('./config');
 const syncHandler = require('./sync-handler');
+const hubspotSyncHandler = require('./hubspot-sync-handler');
 
 const app = express();
 
@@ -21,9 +22,14 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'instantly-attio-sync',
+    service: 'instantly-attio-hubspot-sync',
     timestamp: new Date().toISOString(),
     sync_enabled: config.sync.enabled,
+    integrations: {
+      attio: !!config.attio.apiKey,
+      hubspot: !!config.hubspot.apiKey,
+      instantly: !!config.instantly.apiKey,
+    },
   });
 });
 
@@ -124,6 +130,107 @@ app.post('/webhook/attio', async (req, res) => {
 });
 
 /**
+ * Webhook endpoint for HubSpot events
+ * Register this URL in HubSpot Developer Portal: https://your-server.com/webhook/hubspot
+ */
+app.post('/webhook/hubspot', async (req, res) => {
+  console.log('\n========================================');
+  console.log('HUBSPOT WEBHOOK RECEIVED');
+  console.log('========================================');
+
+  try {
+    // Verify webhook signature if configured
+    if (config.hubspot.webhookSecret) {
+      const signature = req.headers['x-hubspot-signature-v3'];
+      if (signature) {
+        // HubSpot v3 signature verification
+        const requestBody = JSON.stringify(req.body);
+        const timestamp = req.headers['x-hubspot-request-timestamp'];
+        const uri = `https://${req.headers.host}${req.originalUrl}`;
+        const sourceString = `${req.method}${uri}${requestBody}${timestamp}`;
+
+        const expectedSignature = crypto
+          .createHmac('sha256', config.hubspot.webhookSecret)
+          .update(sourceString)
+          .digest('base64');
+
+        if (signature !== expectedSignature) {
+          console.log('Invalid HubSpot webhook signature');
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+      }
+    }
+
+    const event = req.body;
+    console.log('Payload:', JSON.stringify(event, null, 2));
+
+    if (!config.sync.enabled) {
+      console.log('Sync disabled, skipping');
+      return res.json({ received: true, synced: false, reason: 'Sync disabled' });
+    }
+
+    // Process the webhook payload
+    const result = await hubspotSyncHandler.handleHubSpotWebhook(event);
+
+    res.json({
+      received: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error('Error processing HubSpot webhook:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Webhook endpoint for Instantly -> HubSpot sync
+ * Configure this URL in Instantly for HubSpot sync: https://your-server.com/webhook/instantly-hubspot
+ */
+app.post('/webhook/instantly-hubspot', async (req, res) => {
+  console.log('\n========================================');
+  console.log('INSTANTLY WEBHOOK (HUBSPOT) RECEIVED');
+  console.log('========================================');
+
+  try {
+    // Verify webhook signature if configured
+    if (config.instantly.webhookSecret) {
+      const signature = req.headers['x-instantly-signature'];
+      if (signature) {
+        const expectedSignature = crypto
+          .createHmac('sha256', config.instantly.webhookSecret)
+          .update(JSON.stringify(req.body))
+          .digest('hex');
+
+        if (signature !== expectedSignature) {
+          console.log('Invalid Instantly webhook signature');
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+      }
+    }
+
+    const event = req.body;
+    console.log('Event Type:', event.event_type);
+    console.log('Payload:', JSON.stringify(event, null, 2));
+
+    if (!config.sync.enabled) {
+      console.log('Sync disabled, skipping');
+      return res.json({ received: true, synced: false, reason: 'Sync disabled' });
+    }
+
+    // Process the event - sync to HubSpot
+    const result = await hubspotSyncHandler.handleInstantlyEvent(event);
+
+    res.json({
+      received: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error('Error processing Instantly webhook for HubSpot:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Manual trigger endpoint - sync a specific lead
  */
 app.post('/sync/lead', async (req, res) => {
@@ -195,6 +302,11 @@ app.get('/config', (req, res) => {
       hasApiKey: !!config.attio.apiKey,
       hasWebhookSecret: !!config.attio.webhookSecret,
     },
+    hubspot: {
+      apiUrl: config.hubspot.apiUrl,
+      hasApiKey: !!config.hubspot.apiKey,
+      hasWebhookSecret: !!config.hubspot.webhookSecret,
+    },
     sync: config.sync,
     fieldMappings: config.fieldMappings,
   });
@@ -228,15 +340,22 @@ app.use((err, req, res, next) => {
 const PORT = config.server.port;
 app.listen(PORT, () => {
   console.log('\n========================================');
-  console.log('INSTANTLY <-> ATTIO SYNC MIDDLEWARE');
+  console.log('INSTANTLY <-> ATTIO/HUBSPOT SYNC MIDDLEWARE');
   console.log('========================================');
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${config.server.env}`);
   console.log(`Sync enabled: ${config.sync.enabled}`);
   console.log('');
+  console.log('Integrations:');
+  console.log(`  Attio:    ${config.attio.apiKey ? 'Configured' : 'Not configured'}`);
+  console.log(`  HubSpot:  ${config.hubspot.apiKey ? 'Configured' : 'Not configured'}`);
+  console.log(`  Instantly: ${config.instantly.apiKey ? 'Configured' : 'Not configured'}`);
+  console.log('');
   console.log('Webhook endpoints:');
-  console.log(`  Instantly: POST /webhook/instantly`);
-  console.log(`  Attio:     POST /webhook/attio`);
+  console.log(`  Instantly -> Attio:   POST /webhook/instantly`);
+  console.log(`  Instantly -> HubSpot: POST /webhook/instantly-hubspot`);
+  console.log(`  Attio -> Instantly:   POST /webhook/attio`);
+  console.log(`  HubSpot -> Instantly: POST /webhook/hubspot`);
   console.log('');
   console.log('Utility endpoints:');
   console.log(`  Health:    GET  /health`);
