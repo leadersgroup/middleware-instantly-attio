@@ -3,14 +3,27 @@ const config = require('./config');
 
 class HubSpotService {
   constructor() {
-    this.client = axios.create({
+    const apiKey = config.hubspot.apiKey;
+    const isPrivateAppToken = apiKey && apiKey.startsWith('pat-');
+
+    // Configure axios based on authentication type
+    const axiosConfig = {
       baseURL: config.hubspot.apiUrl,
       headers: {
-        'Authorization': `Bearer ${config.hubspot.apiKey}`,
         'Content-Type': 'application/json',
       },
       timeout: 10000,
-    });
+    };
+
+    if (isPrivateAppToken) {
+      // Private App token uses Bearer auth
+      axiosConfig.headers['Authorization'] = `Bearer ${apiKey}`;
+    } else {
+      // Developer API key uses query parameter
+      axiosConfig.params = { hapikey: apiKey };
+    }
+
+    this.client = axios.create(axiosConfig);
   }
 
   /**
