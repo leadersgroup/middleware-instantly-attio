@@ -15,6 +15,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Store recent webhooks for debugging
+const recentWebhooks = [];
+
 /**
  * Health check endpoint
  */
@@ -29,6 +32,36 @@ app.get('/health', (req, res) => {
       instantly: !!config.instantly.apiKey,
     },
   });
+});
+
+/**
+ * Debug endpoint - show recent webhook payloads
+ */
+app.get('/debug/webhooks', (req, res) => {
+  res.json({
+    count: recentWebhooks.length,
+    webhooks: recentWebhooks.slice(-20),
+  });
+});
+
+/**
+ * Catch-all webhook endpoint for testing
+ */
+app.post('/webhook/test', (req, res) => {
+  console.log('\n========================================');
+  console.log('TEST WEBHOOK RECEIVED');
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('========================================');
+
+  recentWebhooks.push({
+    timestamp: new Date().toISOString(),
+    path: req.path,
+    headers: req.headers,
+    body: req.body,
+  });
+
+  res.json({ received: true });
 });
 
 /**
@@ -92,6 +125,14 @@ app.post('/webhook/instantly-hubspot', async (req, res) => {
   console.log('\n========================================');
   console.log('INSTANTLY WEBHOOK RECEIVED');
   console.log('========================================');
+
+  // Store for debugging
+  recentWebhooks.push({
+    timestamp: new Date().toISOString(),
+    path: '/webhook/instantly-hubspot',
+    body: req.body,
+  });
+  if (recentWebhooks.length > 50) recentWebhooks.shift();
 
   try {
     // Verify webhook signature if configured
