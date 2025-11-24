@@ -120,6 +120,15 @@ class HubSpotService {
       if (properties.phone) updateProps.phone = properties.phone;
       if (properties.company) updateProps.company = properties.company;
       if (properties.leadStatus) updateProps.hs_lead_status = properties.leadStatus;
+      if (properties.lifecyclestage) updateProps.lifecyclestage = properties.lifecyclestage;
+      if (properties.ownerId) updateProps.hubspot_owner_id = properties.ownerId;
+      // Marketing source tracking
+      if (properties.lead_source_name) {
+        updateProps.lead_source_name = properties.lead_source_name;
+      }
+      if (properties.lead_source_type) {
+        updateProps.lead_source_type = properties.lead_source_type;
+      }
 
       const response = await this.client.patch(`/crm/v3/objects/contacts/${contactId}`, {
         properties: updateProps,
@@ -128,6 +137,9 @@ class HubSpotService {
       return response.data;
     } catch (error) {
       console.error('HubSpot: Error updating contact:', error.message);
+      if (error.response?.data) {
+        console.error('HubSpot API error details:', JSON.stringify(error.response.data));
+      }
       throw error;
     }
   }
@@ -163,18 +175,38 @@ class HubSpotService {
 
   /**
    * Create task for follow-up
+   * @param {string} contactId - HubSpot contact ID
+   * @param {string} taskSubjectOrContent - Task subject (or content for backwards compatibility)
+   * @param {string} taskBodyOrDueDate - Task body (or due date for backwards compatibility)
+   * @param {string} dueDate - Due date ISO string (optional)
    */
-  async createTask(contactId, taskContent, dueDate = null) {
+  async createTask(contactId, taskSubjectOrContent, taskBodyOrDueDate = null, dueDate = null) {
     try {
+      let subject, body, due;
+
+      // Handle backwards compatibility: old signature was (contactId, content, dueDate)
+      if (dueDate === null && taskBodyOrDueDate && !taskBodyOrDueDate.includes('\n') &&
+          (taskBodyOrDueDate.includes('T') || taskBodyOrDueDate.includes('Z'))) {
+        // Old signature: taskBodyOrDueDate is a date
+        subject = `Follow up: ${taskSubjectOrContent.substring(0, 50)}`;
+        body = taskSubjectOrContent;
+        due = taskBodyOrDueDate;
+      } else {
+        // New signature: (contactId, subject, body, dueDate)
+        subject = taskSubjectOrContent;
+        body = taskBodyOrDueDate || '';
+        due = dueDate;
+      }
+
       const properties = {
-        hs_task_body: taskContent,
-        hs_task_subject: `Follow up: ${taskContent.substring(0, 50)}`,
+        hs_task_subject: subject,
+        hs_task_body: body,
         hs_task_status: 'NOT_STARTED',
-        hs_task_priority: 'MEDIUM',
+        hs_task_priority: subject.includes('🔥') || subject.includes('HOT') ? 'HIGH' : 'MEDIUM',
       };
 
-      if (dueDate) {
-        properties.hs_timestamp = new Date(dueDate).getTime();
+      if (due) {
+        properties.hs_timestamp = new Date(due).getTime();
       }
 
       const taskResponse = await this.client.post('/crm/v3/objects/tasks', {
@@ -188,10 +220,13 @@ class HubSpotService {
         `/crm/v3/objects/tasks/${taskId}/associations/contacts/${contactId}/task_to_contact`
       );
 
-      console.log(`HubSpot: Created task for contact ${contactId}`);
+      console.log(`HubSpot: Created task for contact ${contactId}: ${subject.substring(0, 50)}`);
       return taskResponse.data;
     } catch (error) {
       console.error('HubSpot: Error creating task:', error.message);
+      if (error.response?.data) {
+        console.error('HubSpot API error details:', JSON.stringify(error.response.data));
+      }
       return null;
     }
   }
