@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const config = require('./config');
 const HUBSPOT_TOKEN = config.hubspot.apiKey;
-const OWNER_ID = '160932693'; // sales1@50deeds.com (Matt Enos)
+const OWNER_ID = config.hubspot.instantlyOwnerId || '160932693'; // Default to Matt if not configured
 
 const client = axios.create({
   baseURL: 'https://api.hubapi.com',

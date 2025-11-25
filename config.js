@@ -16,6 +16,7 @@ module.exports = {
     apiKey: process.env.HUBSPOT_API_KEY,
     apiUrl: process.env.HUBSPOT_API_URL || 'https://api.hubapi.com',
     webhookSecret: process.env.HUBSPOT_WEBHOOK_SECRET,
+    instantlyOwnerId: process.env.HUBSPOT_INSTANTLY_OWNER_ID || '244433136', // HubSpot user ID for Instantly contacts (admin@50deeds.com)
   },
 
   sync: {

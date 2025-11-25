@@ -45,11 +45,12 @@ class HubSpotSyncHandler {
       let contact = await hubspotService.findContactByEmail(event.lead_email);
 
       if (!contact) {
-        // Create new contact with proper status
+        // Create new contact with proper status and owner
         contact = await hubspotService.createContact({
           email: event.lead_email,
           firstName: event.first_name || event.firstName || '',
           lastName: event.last_name || event.lastName || '',
+          ownerId: config.hubspot.instantlyOwnerId,
         });
         console.log(`Created new contact in HubSpot: ${event.lead_email}`);
       }
@@ -70,6 +71,11 @@ class HubSpotSyncHandler {
       if (hotEvents.includes(event.event_type)) {
         updateProps.leadStatus = hubspotStatus;
         updateProps.lifecyclestage = 'salesqualifiedlead';
+      }
+
+      // Assign to configured owner if set
+      if (config.hubspot.instantlyOwnerId) {
+        updateProps.ownerId = config.hubspot.instantlyOwnerId;
       }
 
       await hubspotService.updateContact(contactId, updateProps);
@@ -110,7 +116,7 @@ class HubSpotSyncHandler {
         const dueDate = new Date();
         dueDate.setHours(dueDate.getHours() + 2); // Due in 2 hours for hot leads
 
-        await hubspotService.createTask(contactId, taskSubject, taskBody, dueDate.toISOString());
+        await hubspotService.createTask(contactId, taskSubject, taskBody, dueDate.toISOString(), config.hubspot.instantlyOwnerId);
         console.log(`Created ${hasMeetingProposal ? 'HIGH PRIORITY' : ''} follow-up task`);
       }
 

@@ -93,6 +93,9 @@ class HubSpotService {
       if (contactData.company) {
         properties.company = contactData.company;
       }
+      if (contactData.ownerId) {
+        properties.hubspot_owner_id = contactData.ownerId;
+      }
 
       const response = await this.client.post('/crm/v3/objects/contacts', {
         properties,
@@ -179,8 +182,9 @@ class HubSpotService {
    * @param {string} taskSubjectOrContent - Task subject (or content for backwards compatibility)
    * @param {string} taskBodyOrDueDate - Task body (or due date for backwards compatibility)
    * @param {string} dueDate - Due date ISO string (optional)
+   * @param {string} ownerId - HubSpot owner ID (optional)
    */
-  async createTask(contactId, taskSubjectOrContent, taskBodyOrDueDate = null, dueDate = null) {
+  async createTask(contactId, taskSubjectOrContent, taskBodyOrDueDate = null, dueDate = null, ownerId = null) {
     try {
       let subject, body, due;
 
@@ -192,7 +196,7 @@ class HubSpotService {
         body = taskSubjectOrContent;
         due = taskBodyOrDueDate;
       } else {
-        // New signature: (contactId, subject, body, dueDate)
+        // New signature: (contactId, subject, body, dueDate, ownerId)
         subject = taskSubjectOrContent;
         body = taskBodyOrDueDate || '';
         due = dueDate;
@@ -207,6 +211,10 @@ class HubSpotService {
 
       if (due) {
         properties.hs_timestamp = new Date(due).getTime();
+      }
+
+      if (ownerId) {
+        properties.hubspot_owner_id = ownerId;
       }
 
       const taskResponse = await this.client.post('/crm/v3/objects/tasks', {
