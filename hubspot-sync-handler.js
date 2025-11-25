@@ -53,6 +53,9 @@ class HubSpotSyncHandler {
           ownerId: config.hubspot.instantlyOwnerId,
         });
         console.log(`Created new contact in HubSpot: ${event.lead_email}`);
+      } else {
+        // Contact already exists - skip reassignment, keep existing owner
+        console.log(`Found existing contact in HubSpot: ${event.lead_email} - keeping existing owner`);
       }
 
       const contactId = contact?.id;
@@ -71,11 +74,6 @@ class HubSpotSyncHandler {
       if (hotEvents.includes(event.event_type)) {
         updateProps.leadStatus = hubspotStatus;
         updateProps.lifecyclestage = 'salesqualifiedlead';
-      }
-
-      // Assign to configured owner if set
-      if (config.hubspot.instantlyOwnerId) {
-        updateProps.ownerId = config.hubspot.instantlyOwnerId;
       }
 
       await hubspotService.updateContact(contactId, updateProps);
