@@ -50,6 +50,8 @@ class HubSpotSyncHandler {
           email: event.lead_email,
           firstName: event.first_name || event.firstName || '',
           lastName: event.last_name || event.lastName || '',
+          phone: event.phone || '',
+          company: event.companyName || '',
           ownerId: config.hubspot.instantlyOwnerId,
         });
         console.log(`Created new contact in HubSpot: ${event.lead_email}`);
