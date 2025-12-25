@@ -279,8 +279,8 @@ class HubSpotSyncHandler {
 
       const results = [];
 
-      for (const change of event) {
-        const { objectId, changeSource, changes } = change;
+      for (const eventItem of event) {
+        const { objectId, changeSource, changes, propertyName } = eventItem;
 
         if (!objectId) {
           console.log('No contact ID in webhook');
@@ -289,16 +289,32 @@ class HubSpotSyncHandler {
 
         console.log(`Contact ID: ${objectId}`);
 
-        // Look for lifecycle stage changes
-        const lifecycleChange = changes?.find(c => c.propertyName === 'lifecyclestage');
+        let lifecycleChange = null;
+
+        // Try first format: look for lifecyclestage in changes array
+        if (changes && Array.isArray(changes)) {
+          lifecycleChange = changes.find(c => c.propertyName === 'lifecyclestage');
+        }
+
+        // Fallback: check if the event itself has propertyName = lifecyclestage (newer HubSpot format)
+        if (!lifecycleChange && propertyName === 'lifecyclestage') {
+          lifecycleChange = eventItem;
+        }
 
         if (!lifecycleChange) {
           console.log('No lifecycle stage change detected');
           continue;
         }
 
-        const newLifecycleStage = lifecycleChange.newValue;
+        let newLifecycleStage = lifecycleChange.newValue;
         const oldLifecycleStage = lifecycleChange.oldValue;
+
+        // If newValue is missing, fetch the contact to get current lifecycle stage
+        if (!newLifecycleStage) {
+          console.log('newValue not in webhook, fetching contact details...');
+          const contact = await hubspotService.getContact(objectId);
+          newLifecycleStage = contact?.properties?.lifecyclestage?.value;
+        }
 
         console.log(`Lifecycle changed from ${oldLifecycleStage} to ${newLifecycleStage}`);
 
