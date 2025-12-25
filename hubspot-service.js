@@ -319,7 +319,7 @@ class HubSpotService {
    */
   async enrollInSequence(contactId, sequenceId) {
     try {
-      const response = await this.client.post(
+      const response = await this.client.put(
         `/crm/v3/objects/contacts/${contactId}/associations/sequences/${sequenceId}/contact_to_sequence`
       );
       console.log(`HubSpot: Enrolled contact ${contactId} in sequence ${sequenceId}`);
