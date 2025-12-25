@@ -334,7 +334,8 @@ class HubSpotSyncHandler {
         console.log(`Lifecycle changed from ${oldLifecycleStage} to ${newLifecycleStage}`);
 
         // If lifecycle changed to 'trial', submit to trial form
-        if (newLifecycleStage === 'trial') {
+        // Use lowercase comparison to handle both 'trial' and 'Trial' values
+        if (newLifecycleStage?.toLowerCase?.() === 'trial') {
           console.log('Detected trial lifecycle stage change - submitting to trial form');
 
           try {
