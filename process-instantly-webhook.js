@@ -190,7 +190,7 @@ async function processWebhook() {
   await updateContact(contactId, {
     hs_lead_status: newStatus,
     hubspot_owner_id: OWNER_ID,
-    lifecyclestage: 'Lead - New',
+    lifecyclestage: 'lead',
   });
 
   // 3. Create detailed note with the reply
