@@ -103,7 +103,18 @@ class HubSpotSyncHandler {
         console.log(`Created engagement note for ${event.event_type}`);
       }
 
-      // 5. Sequence enrollment: Admin will handle manually in HubSpot
+      // 5. Submit new contact to Wix form for sequence enrollment
+      if (isNewContact) {
+        try {
+          await this.submitToWixForm(event.first_name || event.firstName || '',
+                                     event.last_name || event.lastName || '',
+                                     event.lead_email);
+          console.log(`Submitted contact to Wix form for sequence enrollment`);
+        } catch (error) {
+          console.error('Error submitting to Wix form:', error.message);
+          // Don't fail the sync if Wix form submission fails
+        }
+      }
 
       return {
         success: true,
@@ -204,6 +215,35 @@ class HubSpotSyncHandler {
     return html;
   }
 
+
+  /**
+   * Submit new contact to Wix form for sequence enrollment
+   * The 50deeds.com homepage "Sign up for our newsletter" form triggers HubSpot automation
+   */
+  async submitToWixForm(firstName, lastName, email) {
+    try {
+      const axios = require('axios');
+
+      const formData = new URLSearchParams();
+      formData.append('firstName', firstName);
+      formData.append('lastName', lastName);
+      formData.append('email', email);
+
+      // Submit to 50deeds.com newsletter signup form on homepage
+      const response = await axios.post('https://www.50deeds.com/_functions/sendEmailNewsletter', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        timeout: 10000,
+      });
+
+      console.log(`Newsletter signup form submitted for ${email}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting to newsletter form:', error.message);
+      throw error;
+    }
+  }
 
   /**
    * Manual sync: Push all Instantly leads to HubSpot
