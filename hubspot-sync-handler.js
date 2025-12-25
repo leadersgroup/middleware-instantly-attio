@@ -345,6 +345,11 @@ class HubSpotSyncHandler {
             action: 'submitted_to_customer_onboarding_form',
             description: 'customer onboarding hidden form',
           },
+          'other-not now': {
+            formId: '8638c979-ffd7-4c84-8b33-309d2a131e5b',
+            action: 'submitted_to_reengage_form',
+            description: 'reengage hidden form for sequence enrollment',
+          },
         };
 
         const stageLower = newLifecycleStage?.toLowerCase?.();
@@ -423,6 +428,7 @@ class HubSpotSyncHandler {
    * Supports multiple forms for different lifecycle stages:
    * - Trial Form: 5099b1d0-f5d2-474f-8fe6-2b390bbf4adb
    * - Customer Onboarding Form: ffd80a09-deb0-48ca-97a5-c8f73b06d011
+   * - Reengage Form: 8638c979-ffd7-4c84-8b33-309d2a131e5b
    */
   async submitToHubSpotForm(firstName, lastName, email, formId) {
     try {
