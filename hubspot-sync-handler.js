@@ -314,6 +314,7 @@ class HubSpotSyncHandler {
           console.log('newValue not in webhook, fetching contact details...');
           const contact = await hubspotService.getContact(objectId);
           console.log('Contact response:', JSON.stringify(contact, null, 2));
+          console.log('All properties returned:', Object.keys(contact?.properties || {}));
 
           // Try different property access patterns
           newLifecycleStage = contact?.properties?.lifecyclestage?.value ||
