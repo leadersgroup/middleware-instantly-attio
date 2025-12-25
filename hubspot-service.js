@@ -72,8 +72,13 @@ class HubSpotService {
    */
   async getContact(contactId) {
     try {
-      // Fetch contact - HubSpot returns a limited set of properties by default
-      const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`);
+      // Fetch contact with specific properties we need
+      const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`, {
+        params: {
+          properties: ['firstname', 'lastname', 'email'],
+          limit: 100,
+        },
+      });
       return response.data || null;
     } catch (error) {
       console.error('HubSpot: Error getting contact:', error.message);

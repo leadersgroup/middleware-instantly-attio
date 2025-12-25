@@ -352,9 +352,12 @@ class HubSpotSyncHandler {
               continue;
             }
 
-            const firstName = contact.properties?.firstname?.value || '';
-            const lastName = contact.properties?.lastname?.value || '';
-            const email = contact.properties?.email?.value || '';
+            // Extract properties - handle both response formats
+            const firstName = contact.properties?.firstname?.value || contact.properties?.firstname || '';
+            const lastName = contact.properties?.lastname?.value || contact.properties?.lastname || '';
+            const email = contact.properties?.email?.value || contact.properties?.email || '';
+
+            console.log(`Contact properties - Email: ${email}, First: ${firstName}, Last: ${lastName}`);
 
             if (!email) {
               console.log('Contact has no email address');
