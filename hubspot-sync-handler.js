@@ -309,17 +309,25 @@ class HubSpotSyncHandler {
         let newLifecycleStage = lifecycleChange.newValue;
         const oldLifecycleStage = lifecycleChange.oldValue;
 
-        // If newValue is missing, fetch the contact to get current lifecycle stage
+        // If newValue is missing, try to get it from the webhook propertyValue (enum ID) or fetch from API
         if (!newLifecycleStage) {
-          console.log('newValue not in webhook, fetching contact details...');
-          const contact = await hubspotService.getContact(objectId);
-          console.log('Contact response:', JSON.stringify(contact, null, 2));
-          console.log('All properties returned:', Object.keys(contact?.properties || {}));
+          // Check if webhook has propertyValue which is an enum ID for the lifecyclestage
+          if (lifecycleChange?.propertyValue) {
+            console.log('Webhook has propertyValue, converting enum ID to label...');
+            newLifecycleStage = await hubspotService.getPropertyEnumValue('lifecyclestage', lifecycleChange.propertyValue);
+          }
 
-          // Try different property access patterns
-          newLifecycleStage = contact?.properties?.lifecyclestage?.value ||
-                              contact?.properties?.lifecyclestage ||
-                              contact?.lifecyclestage;
+          // If still no value, fetch contact to get current lifecycle stage
+          if (!newLifecycleStage) {
+            console.log('No value from webhook, fetching contact details...');
+            const contact = await hubspotService.getContact(objectId);
+            console.log('All properties returned:', Object.keys(contact?.properties || {}));
+
+            // Try different property access patterns
+            newLifecycleStage = contact?.properties?.lifecyclestage?.value ||
+                                contact?.properties?.lifecyclestage ||
+                                contact?.lifecyclestage;
+          }
           console.log('Extracted lifecyclestage value:', newLifecycleStage);
         }
 

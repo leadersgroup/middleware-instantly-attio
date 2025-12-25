@@ -52,11 +52,27 @@ class HubSpotService {
   }
 
   /**
+   * Get lifecycle stage value by enum ID
+   * HubSpot webhooks send enum IDs, we need to map them to actual values
+   */
+  async getPropertyEnumValue(propertyName, enumId) {
+    try {
+      const response = await this.client.get(`/crm/v3/properties/contacts/${propertyName}`);
+      const options = response.data.options || [];
+      const option = options.find(o => o.value === enumId);
+      return option?.label || enumId;
+    } catch (error) {
+      console.error(`HubSpot: Error getting enum value for ${propertyName}:`, error.message);
+      return enumId;
+    }
+  }
+
+  /**
    * Get contact by ID
    */
   async getContact(contactId) {
     try {
-      // Fetch contact with all properties to ensure we get lifecyclestage
+      // Fetch contact - HubSpot returns a limited set of properties by default
       const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`);
       return response.data || null;
     } catch (error) {
