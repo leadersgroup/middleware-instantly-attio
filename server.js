@@ -33,9 +33,9 @@ app.get('/health', (req, res) => {
 
 /**
  * Webhook endpoint for HubSpot lifecycle stage changes
- * Register this URL in HubSpot Developer Portal: https://www.50deeds.com/hbwebhook_lifecyclechange
+ * Register this URL in HubSpot Developer Portal: https://middleware-instantly-attio-production.up.railway.app/webhook/hb-lifecycle-change
  */
-app.post('/hbwebhook_lifecyclechange', async (req, res) => {
+app.post('/webhook/hb-lifecycle-change', async (req, res) => {
   console.log('\n========================================');
   console.log('HUBSPOT WEBHOOK RECEIVED');
   console.log('========================================');
@@ -248,7 +248,7 @@ app.listen(PORT, () => {
   console.log('');
   console.log('Webhook endpoints:');
   console.log(`  Instantly -> HubSpot: POST /webhook/instantly-hubspot`);
-  console.log(`  HubSpot Lifecycle:    POST /hbwebhook_lifecyclechange`);
+  console.log(`  HubSpot Lifecycle:    POST /webhook/hb-lifecycle-change`);
   console.log('');
   console.log('Utility endpoints:');
   console.log(`  Health:       GET  /health`);

@@ -10,7 +10,7 @@ Follow these steps to manually register the webhook in HubSpot for lifecycle sta
 
 ## Step 1: Get Your Webhook URL
 
-Your webhook endpoint is: **`https://www.50deeds.com/hbwebhook_lifecyclechange`**
+Your webhook endpoint is: **`https://middleware-instantly-attio-production.up.railway.app/webhook/hb-lifecycle-change`**
 
 (Already created and configured)
 
@@ -24,7 +24,7 @@ Your webhook endpoint is: **`https://www.50deeds.com/hbwebhook_lifecyclechange`*
 
 1. In the left sidebar, click **"Webhooks"**
 2. Under **"Webhook Settings"**, enter your webhook URL in the **"Webhook target URL"** field:
-   - Enter: `https://www.50deeds.com/hbwebhook_lifecyclechange`
+   - Enter: `https://middleware-instantly-attio-production.up.railway.app/webhook/hb-lifecycle-change`
 3. Click **"Save"** button
 4. HubSpot will send a test request to verify the endpoint is reachable
 
@@ -118,7 +118,7 @@ If you prefer to register the webhook programmatically instead of manually, you 
 ```bash
 curl -X POST http://localhost:3001/setup/webhook \
   -H "Content-Type: application/json" \
-  -d '{"webhookUrl": "https://www.50deeds.com/hbwebhook_lifecyclechange"}'
+  -d '{"webhookUrl": "https://middleware-instantly-attio-production.up.railway.app/webhook/hb-lifecycle-change"}'
 ```
 
 This will automatically register the webhook via the HubSpot API.
@@ -128,4 +128,4 @@ This will automatically register the webhook via the HubSpot API.
 - **Webhook Handler**: `hubspot-sync-handler.js` → `handleHubSpotWebhook()` method
 - **Trial Form Submission**: `hubspot-sync-handler.js` → `submitToTrialForm()` method
 - **HubSpot Service**: `hubspot-service.js` → webhook management methods
-- **Server Endpoint**: `server.js` → `/webhook/hubspot` route
+- **Server Endpoint**: `server.js` → `/webhook/hb-lifecycle-change` route
