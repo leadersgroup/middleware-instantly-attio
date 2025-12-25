@@ -313,6 +313,65 @@ class HubSpotService {
   }
 
   /**
+   * Enroll contact in a sequence
+   * @param {string} contactId - HubSpot contact ID
+   * @param {string} sequenceId - HubSpot sequence ID
+   */
+  async enrollInSequence(contactId, sequenceId) {
+    try {
+      const response = await this.client.post(
+        `/crm/v3/objects/contacts/${contactId}/associations/sequences/${sequenceId}/contact_to_sequence`
+      );
+      console.log(`HubSpot: Enrolled contact ${contactId} in sequence ${sequenceId}`);
+      return response.data;
+    } catch (error) {
+      console.error('HubSpot: Error enrolling contact in sequence:', error.message);
+      if (error.response?.data) {
+        console.error('HubSpot API error details:', JSON.stringify(error.response.data));
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Unenroll contact from a sequence
+   * @param {string} contactId - HubSpot contact ID
+   * @param {string} sequenceId - HubSpot sequence ID
+   */
+  async unenrollFromSequence(contactId, sequenceId) {
+    try {
+      const response = await this.client.delete(
+        `/crm/v3/objects/contacts/${contactId}/associations/sequences/${sequenceId}/contact_to_sequence`
+      );
+      console.log(`HubSpot: Unenrolled contact ${contactId} from sequence ${sequenceId}`);
+      return response.data;
+    } catch (error) {
+      console.error('HubSpot: Error unenrolling contact from sequence:', error.message);
+      if (error.response?.data) {
+        console.error('HubSpot API error details:', JSON.stringify(error.response.data));
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Get all sequences
+   */
+  async getSequences() {
+    try {
+      const response = await this.client.get('/crm/v3/objects/sequences', {
+        params: {
+          limit: 100,
+        },
+      });
+      return response.data.results || [];
+    } catch (error) {
+      console.error('HubSpot: Error getting sequences:', error.message);
+      return [];
+    }
+  }
+
+  /**
    * Get webhooks (subscriptions)
    */
   async getWebhooks() {

@@ -17,6 +17,15 @@ module.exports = {
     apiUrl: process.env.HUBSPOT_API_URL || 'https://api.hubapi.com',
     webhookSecret: process.env.HUBSPOT_WEBHOOK_SECRET,
     instantlyOwnerId: process.env.HUBSPOT_INSTANTLY_OWNER_ID || '85461012', // HubSpot user ID for Instantly contacts (admin@50deeds.com)
+
+    // Sequence IDs for automatic enrollment
+    // Get these from HubSpot: Automation → Sequences → Click sequence → URL contains the ID
+    sequences: {
+      newLeadSequence: process.env.HUBSPOT_SEQUENCE_NEW_LEAD,
+      trialSequence: process.env.HUBSPOT_SEQUENCE_TRIAL,
+      customerOnboardingSequence: process.env.HUBSPOT_SEQUENCE_CUSTOMER,
+      reengageSequence: process.env.HUBSPOT_SEQUENCE_reengage,
+    },
   },
 
   sync: {

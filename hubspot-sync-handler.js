@@ -120,6 +120,9 @@ class HubSpotSyncHandler {
         console.log(`Created ${hasMeetingProposal ? 'HIGH PRIORITY' : ''} follow-up task`);
       }
 
+      // 6. Enroll in sequence based on event type and lifecycle stage
+      await this.enrollInSequenceBasedOnEvent(contactId, event.event_type);
+
       return {
         success: true,
         action: 'synced_to_hubspot',
@@ -318,6 +321,46 @@ class HubSpotSyncHandler {
     html += '<p><em>Source: Instantly Campaign Webhook</em></p>';
 
     return html;
+  }
+
+  /**
+   * Enroll contact in sequence based on event type
+   * Maps Instantly events to HubSpot sequences
+   */
+  async enrollInSequenceBasedOnEvent(contactId, eventType) {
+    try {
+      // Sequence mapping: which event type triggers which sequence
+      const eventToSequenceKey = {
+        'reply_received': 'newLeadSequence',
+        'lead_interested': 'newLeadSequence',
+        'lead_meeting_booked': 'newLeadSequence',
+        'email_sent': 'newLeadSequence',
+      };
+
+      // Check if this event should trigger sequence enrollment
+      const sequenceKey = eventToSequenceKey[eventType];
+      if (!sequenceKey) {
+        console.log(`No sequence mapping for event type: ${eventType}`);
+        return null;
+      }
+
+      // Get the sequence ID from config
+      const sequenceId = config.hubspot.sequences[sequenceKey];
+      if (!sequenceId) {
+        console.log(`Sequence ID not configured for: ${sequenceKey} (${eventType})`);
+        console.log(`Set HUBSPOT_SEQUENCE_NEW_LEAD in .env to enable auto-enrollment`);
+        return null;
+      }
+
+      // Enroll contact in the sequence
+      const result = await hubspotService.enrollInSequence(contactId, sequenceId);
+      console.log(`Enrolled contact ${contactId} in sequence ID: ${sequenceId}`);
+      return result;
+    } catch (error) {
+      console.error('Error enrolling contact in sequence:', error.message);
+      // Don't throw - sequence enrollment is optional
+      return null;
+    }
   }
 
   /**
