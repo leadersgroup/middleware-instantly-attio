@@ -264,6 +264,157 @@ class HubSpotSyncHandler {
   }
 
   /**
+   * Handle incoming HubSpot webhook event
+   * Listen for lifecycle stage changes to trigger form submissions for sequence enrollment
+   */
+  async handleHubSpotWebhook(event) {
+    console.log(`\n[HUBSPOT WEBHOOK] Processing event`);
+
+    try {
+      // HubSpot webhooks come with an array of changes
+      if (!event || !Array.isArray(event)) {
+        console.log('Invalid HubSpot webhook payload');
+        return { success: false, reason: 'Invalid payload' };
+      }
+
+      const results = [];
+
+      for (const change of event) {
+        const { objectId, changeSource, changes } = change;
+
+        if (!objectId) {
+          console.log('No contact ID in webhook');
+          continue;
+        }
+
+        console.log(`Contact ID: ${objectId}`);
+
+        // Look for lifecycle stage changes
+        const lifecycleChange = changes?.find(c => c.propertyName === 'lifecyclestage');
+
+        if (!lifecycleChange) {
+          console.log('No lifecycle stage change detected');
+          continue;
+        }
+
+        const newLifecycleStage = lifecycleChange.newValue;
+        const oldLifecycleStage = lifecycleChange.oldValue;
+
+        console.log(`Lifecycle changed from ${oldLifecycleStage} to ${newLifecycleStage}`);
+
+        // If lifecycle changed to 'trial', submit to trial form
+        if (newLifecycleStage === 'trial') {
+          console.log('Detected trial lifecycle stage change - submitting to trial form');
+
+          try {
+            // Get contact details
+            const contact = await hubspotService.getContact(objectId);
+
+            if (!contact) {
+              console.log('Failed to get contact details');
+              results.push({
+                contactId: objectId,
+                success: false,
+                reason: 'Contact not found',
+              });
+              continue;
+            }
+
+            const firstName = contact.properties?.firstname?.value || '';
+            const lastName = contact.properties?.lastname?.value || '';
+            const email = contact.properties?.email?.value || '';
+
+            if (!email) {
+              console.log('Contact has no email address');
+              results.push({
+                contactId: objectId,
+                success: false,
+                reason: 'No email address',
+              });
+              continue;
+            }
+
+            // Submit to trial form
+            await this.submitToTrialForm(firstName, lastName, email);
+
+            console.log(`Submitted contact ${email} to trial form for sequence enrollment`);
+
+            results.push({
+              contactId: objectId,
+              success: true,
+              action: 'submitted_to_trial_form',
+              email: email,
+            });
+          } catch (error) {
+            console.error('Error processing trial lifecycle change:', error.message);
+            results.push({
+              contactId: objectId,
+              success: false,
+              error: error.message,
+            });
+          }
+        }
+      }
+
+      return {
+        success: results.length > 0,
+        processed: results.length,
+        results: results,
+      };
+    } catch (error) {
+      console.error('Error handling HubSpot webhook:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Submit contact to trial form for sequence enrollment
+   * Form ID: 5099b1d0-f5d2-474f-8fe6-2b390bbf4adb
+   * Portal ID: 244433136
+   */
+  async submitToTrialForm(firstName, lastName, email) {
+    try {
+      const axios = require('axios');
+
+      // HubSpot Forms API endpoint for trial form
+      const portalId = '244433136';
+      const formId = '5099b1d0-f5d2-474f-8fe6-2b390bbf4adb';
+
+      const response = await axios.post(
+        `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`,
+        {
+          fields: [
+            {
+              name: 'firstname',
+              value: firstName,
+            },
+            {
+              name: 'lastname',
+              value: lastName,
+            },
+            {
+              name: 'email',
+              value: email,
+            },
+          ],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        }
+      );
+
+      console.log(`Trial form submitted for ${email}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting to trial form:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Manual sync: Push all Instantly leads to HubSpot
    */
   async syncAllLeadsToHubSpot(campaignId) {

@@ -52,6 +52,26 @@ class HubSpotService {
   }
 
   /**
+   * Get contact by ID
+   */
+  async getContact(contactId) {
+    try {
+      const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`, {
+        params: {
+          properties: ['firstname', 'lastname', 'email'],
+        },
+      });
+      return response.data || null;
+    } catch (error) {
+      console.error('HubSpot: Error getting contact:', error.message);
+      if (error.response?.data) {
+        console.error('HubSpot API error details:', JSON.stringify(error.response.data));
+      }
+      return null;
+    }
+  }
+
+  /**
    * Create or update contact in HubSpot
    */
   async upsertContact(contactData) {
@@ -377,13 +397,77 @@ class HubSpotService {
    */
   async getWebhooks() {
     try {
-      // HubSpot webhooks are managed via app settings, not API
-      // This is a placeholder - webhooks are configured in HubSpot developer portal
-      console.log('HubSpot: Webhooks are configured in HubSpot Developer Portal');
-      return [];
+      const response = await this.client.get('/crm/v3/extensions/webhooks/subscriptions');
+      return response.data.results || [];
     } catch (error) {
       console.error('HubSpot: Error getting webhooks:', error.message);
+      if (error.response?.data) {
+        console.error('HubSpot API error details:', JSON.stringify(error.response.data));
+      }
       return [];
+    }
+  }
+
+  /**
+   * Register webhook endpoint and create subscription for lifecycle stage changes
+   * @param {string} webhookUrl - Full URL to receive webhooks (e.g., https://your-server.com/webhook/hubspot)
+   */
+  async registerWebhookSubscription(webhookUrl) {
+    try {
+      console.log(`HubSpot: Registering webhook subscription at ${webhookUrl}`);
+
+      // First, set the webhook target URL
+      const targetResponse = await this.client.put(
+        '/crm/v3/extensions/webhooks/settings',
+        {
+          targetUrl: webhookUrl,
+        }
+      );
+      console.log('HubSpot: Webhook target URL registered');
+
+      // Then, subscribe to contact property change events for lifecyclestage
+      const subscriptionResponse = await this.client.post(
+        '/crm/v3/extensions/webhooks/subscriptions',
+        {
+          subscriptionDetails: {
+            subscriptionUrl: webhookUrl,
+            throttling: {
+              maxConcurrentRequests: 10,
+            },
+          },
+          eventTypes: [
+            'contact.propertyChange',
+          ],
+          propertyName: 'lifecyclestage',
+        }
+      );
+
+      console.log(`HubSpot: Webhook subscription created for lifecyclestage changes`);
+      return subscriptionResponse.data;
+    } catch (error) {
+      console.error('HubSpot: Error registering webhook subscription:', error.message);
+      if (error.response?.data) {
+        console.error('HubSpot API error details:', JSON.stringify(error.response.data));
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a webhook subscription
+   * @param {string} subscriptionId - HubSpot subscription ID
+   */
+  async deleteWebhookSubscription(subscriptionId) {
+    try {
+      await this.client.delete(`/crm/v3/extensions/webhooks/subscriptions/${subscriptionId}`);
+      console.log(`HubSpot: Webhook subscription ${subscriptionId} deleted`);
+      return { success: true };
+    } catch (error) {
+      console.error('HubSpot: Error deleting webhook subscription:', error.message);
+      if (error.response?.data) {
+        console.error('HubSpot API error details:', JSON.stringify(error.response.data));
+      }
+      throw error;
     }
   }
 }

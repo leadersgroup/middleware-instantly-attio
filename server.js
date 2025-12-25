@@ -32,10 +32,10 @@ app.get('/health', (req, res) => {
 });
 
 /**
- * Webhook endpoint for HubSpot events
- * Register this URL in HubSpot Developer Portal: https://your-server.com/webhook/hubspot
+ * Webhook endpoint for HubSpot lifecycle stage changes
+ * Register this URL in HubSpot Developer Portal: https://www.50deeds.com/hbwebhook_lifecyclechange
  */
-app.post('/webhook/hubspot', async (req, res) => {
+app.post('/hbwebhook_lifecyclechange', async (req, res) => {
   console.log('\n========================================');
   console.log('HUBSPOT WEBHOOK RECEIVED');
   console.log('========================================');
@@ -178,6 +178,35 @@ app.get('/config', (req, res) => {
 });
 
 /**
+ * Setup endpoint - Register HubSpot webhook subscription
+ */
+app.post('/setup/webhook', async (req, res) => {
+  try {
+    const { webhookUrl } = req.body;
+
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'webhookUrl is required' });
+    }
+
+    console.log('\n[SETUP] Registering HubSpot webhook subscription');
+    const hubspotService = require('./hubspot-service');
+    const result = await hubspotService.registerWebhookSubscription(webhookUrl);
+
+    res.json({
+      success: true,
+      message: 'HubSpot webhook subscription registered successfully',
+      details: result,
+    });
+  } catch (error) {
+    console.error('Error registering webhook:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
  * Test endpoint - simulate Instantly event
  */
 app.post('/test/instantly', async (req, res) => {
@@ -219,13 +248,14 @@ app.listen(PORT, () => {
   console.log('');
   console.log('Webhook endpoints:');
   console.log(`  Instantly -> HubSpot: POST /webhook/instantly-hubspot`);
-  console.log(`  HubSpot -> Instantly: POST /webhook/hubspot`);
+  console.log(`  HubSpot Lifecycle:    POST /hbwebhook_lifecyclechange`);
   console.log('');
   console.log('Utility endpoints:');
-  console.log(`  Health:    GET  /health`);
-  console.log(`  Config:    GET  /config`);
-  console.log(`  Sync Lead: POST /sync/lead`);
-  console.log(`  Test:      POST /test/instantly`);
+  console.log(`  Health:       GET  /health`);
+  console.log(`  Config:       GET  /config`);
+  console.log(`  Setup:        POST /setup/webhook`);
+  console.log(`  Sync Lead:    POST /sync/lead`);
+  console.log(`  Test:         POST /test/instantly`);
   console.log('========================================\n');
 });
 
