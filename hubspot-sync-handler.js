@@ -313,7 +313,9 @@ class HubSpotSyncHandler {
         if (!newLifecycleStage) {
           console.log('newValue not in webhook, fetching contact details...');
           const contact = await hubspotService.getContact(objectId);
+          console.log('Contact response:', JSON.stringify(contact, null, 2));
           newLifecycleStage = contact?.properties?.lifecyclestage?.value;
+          console.log('Extracted lifecyclestage value:', newLifecycleStage);
         }
 
         console.log(`Lifecycle changed from ${oldLifecycleStage} to ${newLifecycleStage}`);
