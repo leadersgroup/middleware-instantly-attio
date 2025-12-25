@@ -43,6 +43,7 @@ class HubSpotSyncHandler {
 
       // 2. Find or create contact in HubSpot
       let contact = await hubspotService.findContactByEmail(event.lead_email);
+      let isNewContact = false;
 
       if (!contact) {
         // Create new contact with proper status and owner
@@ -55,6 +56,7 @@ class HubSpotSyncHandler {
           ownerId: config.hubspot.instantlyOwnerId,
         });
         console.log(`Created new contact in HubSpot: ${event.lead_email}`);
+        isNewContact = true;
       } else {
         // Contact already exists - skip reassignment, keep existing owner
         console.log(`Found existing contact in HubSpot: ${event.lead_email} - keeping existing owner`);
@@ -66,20 +68,23 @@ class HubSpotSyncHandler {
         return { success: false, reason: 'No contact ID' };
       }
 
-      // 3. Update contact - always set source to Instantly
-      const hotEvents = ['reply_received', 'lead_interested', 'lead_meeting_booked', 'lead_meeting_completed'];
+      // 3. Update contact - only set lifecycle stage on first contact creation
       const updateProps = {
         lead_source_name: 'Instantly',
         lead_source_type: 'INTEGRATION',
       };
 
-      if (hotEvents.includes(event.event_type)) {
-        updateProps.leadStatus = hubspotStatus;
+      // Only update lifecycle stage for new contacts (first time)
+      if (isNewContact) {
         updateProps.lifecyclestage = 'lead';
       }
 
       await hubspotService.updateContact(contactId, updateProps);
-      console.log(`Updated HubSpot contact - Status: ${hubspotStatus}, Source: Instantly`);
+      if (isNewContact) {
+        console.log(`Updated HubSpot contact - Lifecycle: lead, Source: Instantly`);
+      } else {
+        console.log(`Updated HubSpot contact - Source: Instantly (lifecycle unchanged)`);
+      }
 
       // 4. Create detailed note for significant events
       const significantEvents = [
@@ -98,35 +103,11 @@ class HubSpotSyncHandler {
         console.log(`Created engagement note for ${event.event_type}`);
       }
 
-      // 5. Create high-priority task for hot leads with meeting detection
-      if (hotEvents.includes(event.event_type)) {
-        const replyText = (event.reply_text_snippet || event.reply_text || '').toLowerCase();
-        const hasMeetingProposal = replyText.includes('call') ||
-                                   replyText.includes('meet') ||
-                                   replyText.includes('am') ||
-                                   replyText.includes('pm') ||
-                                   replyText.includes('schedule');
-
-        const taskSubject = hasMeetingProposal
-          ? `🔥 HOT: ${event.first_name || event.firstName || ''} ${event.last_name || event.lastName || ''} - Meeting Request`
-          : `📞 Follow up: ${event.lead_email} - ${event.event_type}`;
-
-        const taskBody = this.formatTaskBody(event, hasMeetingProposal);
-
-        const dueDate = new Date();
-        dueDate.setHours(dueDate.getHours() + 2); // Due in 2 hours for hot leads
-
-        await hubspotService.createTask(contactId, taskSubject, taskBody, dueDate.toISOString(), config.hubspot.instantlyOwnerId);
-        console.log(`Created ${hasMeetingProposal ? 'HIGH PRIORITY' : ''} follow-up task`);
-      }
-
-      // 6. Enroll in sequence based on event type and lifecycle stage
-      await this.enrollInSequenceBasedOnEvent(contactId, event.event_type);
+      // 5. Sequence enrollment: Admin will handle manually in HubSpot
 
       return {
         success: true,
         action: 'synced_to_hubspot',
-        status: hubspotStatus,
         contactId: contactId
       };
     } catch (error) {
@@ -173,106 +154,6 @@ class HubSpotSyncHandler {
     return lines.join('\n');
   }
 
-  /**
-   * Handle incoming HubSpot webhook payload
-   * HubSpot sends array of subscription events
-   */
-  async handleHubSpotWebhook(payload) {
-    console.log(`\n[HUBSPOT WEBHOOK] Received webhook`);
-
-    // HubSpot sends an array of events
-    const events = Array.isArray(payload) ? payload : [payload];
-    const results = [];
-
-    for (const event of events) {
-      const result = await this.handleHubSpotEvent(event);
-      results.push(result);
-    }
-
-    return { success: true, processed: results.length, results };
-  }
-
-  /**
-   * Handle single HubSpot event
-   * Sync to Instantly
-   */
-  async handleHubSpotEvent(event) {
-    const eventType = event.subscriptionType;
-    const contactId = event.objectId;
-
-    console.log(`\n[HUBSPOT -> INSTANTLY] Event: ${eventType}`);
-    console.log(`Contact ID: ${contactId}`);
-
-    if (!contactId) {
-      console.log('No contact ID in HubSpot event, skipping');
-      return { success: false, reason: 'No contact ID' };
-    }
-
-    try {
-      // Fetch the full contact from HubSpot API
-      const contact = await hubspotService.getContactById(contactId);
-
-      if (!contact) {
-        console.log('Could not fetch contact from HubSpot');
-        return { success: false, reason: 'Failed to fetch contact' };
-      }
-
-      // Extract email from contact
-      const primaryEmail = contact.properties?.email;
-
-      if (!primaryEmail) {
-        console.log('No email in HubSpot contact, skipping');
-        return { success: false, reason: 'No email address' };
-      }
-
-      console.log(`Contact: ${primaryEmail}`);
-
-      // Extract name
-      const firstName = contact.properties?.firstname || '';
-      const lastName = contact.properties?.lastname || '';
-      const fullName = `${firstName} ${lastName}`.trim();
-
-      // Handle different HubSpot event types
-      switch (eventType) {
-        case 'contact.creation':
-          // New contact added to HubSpot
-          console.log(`New contact created in HubSpot: ${primaryEmail} (${fullName})`);
-          return {
-            success: true,
-            action: 'contact_created',
-            email: primaryEmail,
-            name: fullName
-          };
-
-        case 'contact.propertyChange':
-          // Check if lead status changed
-          const changedProperty = event.propertyName;
-          const newValue = event.propertyValue;
-
-          if (changedProperty === 'hs_lead_status' && newValue) {
-            const instantlyStatus = config.fieldMappings.hubspotToInstantly[newValue];
-            if (instantlyStatus) {
-              await instantlyService.updateLeadStatus(primaryEmail, instantlyStatus);
-              console.log(`Updated Instantly lead status: ${instantlyStatus}`);
-              return { success: true, action: 'status_updated', status: instantlyStatus };
-            }
-          }
-          console.log(`Property changed but no status mapping found: ${changedProperty}`);
-          return { success: true, action: 'property_changed_no_mapping' };
-
-        case 'contact.deletion':
-          console.log(`Contact deleted in HubSpot: ${primaryEmail}`);
-          return { success: true, action: 'contact_deleted', email: primaryEmail };
-
-        default:
-          console.log(`Unhandled HubSpot event type: ${eventType}`);
-          return { success: true, action: 'unhandled_event_type' };
-      }
-    } catch (error) {
-      console.error('Error syncing HubSpot event to Instantly:', error.message);
-      return { success: false, error: error.message };
-    }
-  }
 
   /**
    * Format event data into a readable note with rich formatting
@@ -323,45 +204,6 @@ class HubSpotSyncHandler {
     return html;
   }
 
-  /**
-   * Enroll contact in sequence based on event type
-   * Maps Instantly events to HubSpot sequences
-   */
-  async enrollInSequenceBasedOnEvent(contactId, eventType) {
-    try {
-      // Sequence mapping: which event type triggers which sequence
-      const eventToSequenceKey = {
-        'reply_received': 'newLeadSequence',
-        'lead_interested': 'newLeadSequence',
-        'lead_meeting_booked': 'newLeadSequence',
-        'email_sent': 'newLeadSequence',
-      };
-
-      // Check if this event should trigger sequence enrollment
-      const sequenceKey = eventToSequenceKey[eventType];
-      if (!sequenceKey) {
-        console.log(`No sequence mapping for event type: ${eventType}`);
-        return null;
-      }
-
-      // Get the sequence ID from config
-      const sequenceId = config.hubspot.sequences[sequenceKey];
-      if (!sequenceId) {
-        console.log(`Sequence ID not configured for: ${sequenceKey} (${eventType})`);
-        console.log(`Set HUBSPOT_SEQUENCE_NEW_LEAD in .env to enable auto-enrollment`);
-        return null;
-      }
-
-      // Enroll contact in the sequence
-      const result = await hubspotService.enrollInSequence(contactId, sequenceId);
-      console.log(`Enrolled contact ${contactId} in sequence ID: ${sequenceId}`);
-      return result;
-    } catch (error) {
-      console.error('Error enrolling contact in sequence:', error.message);
-      // Don't throw - sequence enrollment is optional
-      return null;
-    }
-  }
 
   /**
    * Manual sync: Push all Instantly leads to HubSpot

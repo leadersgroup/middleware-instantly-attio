@@ -184,13 +184,11 @@ async function processWebhook() {
 
   const contactId = contact.id;
 
-  // 2. Update contact status based on event type
-  const newStatus = EVENT_TO_STATUS[webhookData.event_type] || 'IN_PROGRESS';
-  console.log(`\nUpdating contact status to ${newStatus}...`);
+  // 2. Update contact lifecycle stage
+  console.log(`\nUpdating contact lifecycle stage to lead...`);
   await updateContact(contactId, {
-    hs_lead_status: newStatus,
-    hubspot_owner_id: OWNER_ID,
     lifecyclestage: 'lead',
+    hubspot_owner_id: OWNER_ID,
   });
 
   // 3. Create detailed note with the reply
