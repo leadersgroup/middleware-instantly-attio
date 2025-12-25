@@ -217,30 +217,48 @@ class HubSpotSyncHandler {
 
 
   /**
-   * Submit new contact to Wix form for sequence enrollment
+   * Submit new contact to HubSpot form for sequence enrollment
    * The 50deeds.com homepage "Sign up for our newsletter" form triggers HubSpot automation
+   * Portal ID: 244433136, Form ID: f5425444-6422-4049-8d12-9b736221a33a
    */
   async submitToWixForm(firstName, lastName, email) {
     try {
       const axios = require('axios');
 
-      const formData = new URLSearchParams();
-      formData.append('firstName', firstName);
-      formData.append('lastName', lastName);
-      formData.append('email', email);
+      // HubSpot Forms API endpoint
+      const portalId = '244433136';
+      const formId = 'f5425444-6422-4049-8d12-9b736221a33a';
 
-      // Submit to 50deeds.com newsletter signup form on homepage
-      const response = await axios.post('https://www.50deeds.com/_functions/sendEmailNewsletter', formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+      const response = await axios.post(
+        `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`,
+        {
+          fields: [
+            {
+              name: 'firstname',
+              value: firstName,
+            },
+            {
+              name: 'lastname',
+              value: lastName,
+            },
+            {
+              name: 'email',
+              value: email,
+            },
+          ],
         },
-        timeout: 10000,
-      });
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        }
+      );
 
-      console.log(`Newsletter signup form submitted for ${email}`);
+      console.log(`HubSpot form submitted for ${email}`);
       return response.data;
     } catch (error) {
-      console.error('Error submitting to newsletter form:', error.message);
+      console.error('Error submitting to HubSpot form:', error.message);
       throw error;
     }
   }
