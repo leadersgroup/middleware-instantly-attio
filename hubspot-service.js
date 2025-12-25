@@ -56,11 +56,8 @@ class HubSpotService {
    */
   async getContact(contactId) {
     try {
-      const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`, {
-        params: {
-          properties: ['firstname', 'lastname', 'email', 'lifecyclestage'],
-        },
-      });
+      // Fetch contact with all properties to ensure we get lifecyclestage
+      const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`);
       return response.data || null;
     } catch (error) {
       console.error('HubSpot: Error getting contact:', error.message);
