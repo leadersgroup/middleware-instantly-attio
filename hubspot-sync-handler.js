@@ -333,10 +333,25 @@ class HubSpotSyncHandler {
 
         console.log(`Lifecycle changed from ${oldLifecycleStage} to ${newLifecycleStage}`);
 
-        // If lifecycle changed to 'trial', submit to trial form
-        // Use lowercase comparison to handle both 'trial' and 'Trial' values
-        if (newLifecycleStage?.toLowerCase?.() === 'trial') {
-          console.log('Detected trial lifecycle stage change - submitting to trial form');
+        // Define form mappings for different lifecycle stages
+        const lifecycleFormMap = {
+          'trial': {
+            formId: '5099b1d0-f5d2-474f-8fe6-2b390bbf4adb',
+            action: 'submitted_to_trial_form',
+            description: 'trial form for sequence enrollment',
+          },
+          'customer': {
+            formId: 'ffd80a09-deb0-48ca-97a5-c8f73b06d011',
+            action: 'submitted_to_customer_onboarding_form',
+            description: 'customer onboarding hidden form',
+          },
+        };
+
+        const stageLower = newLifecycleStage?.toLowerCase?.();
+        const formConfig = lifecycleFormMap[stageLower];
+
+        if (formConfig) {
+          console.log(`Detected ${stageLower} lifecycle stage change - submitting to ${formConfig.description}`);
 
           try {
             // Get contact details
@@ -369,19 +384,19 @@ class HubSpotSyncHandler {
               continue;
             }
 
-            // Submit to trial form
-            await this.submitToTrialForm(firstName, lastName, email);
+            // Submit to appropriate form
+            await this.submitToHubSpotForm(firstName, lastName, email, formConfig.formId);
 
-            console.log(`Submitted contact ${email} to trial form for sequence enrollment`);
+            console.log(`Submitted contact ${email} to ${formConfig.description}`);
 
             results.push({
               contactId: objectId,
               success: true,
-              action: 'submitted_to_trial_form',
+              action: formConfig.action,
               email: email,
             });
           } catch (error) {
-            console.error('Error processing trial lifecycle change:', error.message);
+            console.error(`Error processing ${stageLower} lifecycle change:`, error.message);
             results.push({
               contactId: objectId,
               success: false,
@@ -403,17 +418,17 @@ class HubSpotSyncHandler {
   }
 
   /**
-   * Submit contact to trial form for sequence enrollment
-   * Form ID: 5099b1d0-f5d2-474f-8fe6-2b390bbf4adb
+   * Submit contact to HubSpot form for sequence enrollment
    * Portal ID: 244433136
+   * Supports multiple forms for different lifecycle stages:
+   * - Trial Form: 5099b1d0-f5d2-474f-8fe6-2b390bbf4adb
+   * - Customer Onboarding Form: ffd80a09-deb0-48ca-97a5-c8f73b06d011
    */
-  async submitToTrialForm(firstName, lastName, email) {
+  async submitToHubSpotForm(firstName, lastName, email, formId) {
     try {
       const axios = require('axios');
 
-      // HubSpot Forms API endpoint for trial form
       const portalId = '244433136';
-      const formId = '5099b1d0-f5d2-474f-8fe6-2b390bbf4adb';
 
       const response = await axios.post(
         `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`,
@@ -441,12 +456,20 @@ class HubSpotSyncHandler {
         }
       );
 
-      console.log(`Trial form submitted for ${email}`);
+      console.log(`Form ${formId} submitted for ${email}`);
       return response.data;
     } catch (error) {
-      console.error('Error submitting to trial form:', error.message);
+      console.error(`Error submitting to form ${formId}:`, error.message);
       throw error;
     }
+  }
+
+  /**
+   * Submit contact to trial form for sequence enrollment
+   * @deprecated Use submitToHubSpotForm instead
+   */
+  async submitToTrialForm(firstName, lastName, email) {
+    return this.submitToHubSpotForm(firstName, lastName, email, '5099b1d0-f5d2-474f-8fe6-2b390bbf4adb');
   }
 
   /**
