@@ -75,7 +75,7 @@ class HubSpotSyncHandler {
 
       if (hotEvents.includes(event.event_type)) {
         updateProps.leadStatus = hubspotStatus;
-        updateProps.lifecyclestage = 'salesqualifiedlead';
+        updateProps.lifecyclestage = 'Lead - New';
       }
 
       await hubspotService.updateContact(contactId, updateProps);
