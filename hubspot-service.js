@@ -79,6 +79,7 @@ class HubSpotService {
     try {
       const properties = {
         email: contactData.email,
+        hs_analytics_contact_type: 'Marketing contact',
       };
 
       if (contactData.firstName) {
