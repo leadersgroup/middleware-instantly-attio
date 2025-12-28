@@ -80,7 +80,7 @@ class HubSpotSyncHandler {
         return { success: false, reason: 'No contact ID' };
       }
 
-      // 3. Update contact - only set lifecycle stage on first contact creation
+      // 3. Update contact properties
       const updateProps = {
         lead_source_name: 'Instantly',
         lead_source_type: 'INTEGRATION',
@@ -100,6 +100,7 @@ class HubSpotSyncHandler {
 
       // 4. Create detailed note for significant events
       const significantEvents = [
+        'email_sent',
         'reply_received',
         'lead_interested',
         'lead_not_interested',
