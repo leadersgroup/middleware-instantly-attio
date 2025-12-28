@@ -238,11 +238,20 @@ app.get('/verify/contact', async (req, res) => {
     // Check if enrolled in sequence
     const isEnrolled = await hubspotService.isContactEnrolledInSequence(contactId);
 
+    // Get sequence IDs for debugging
+    const sequenceIdsResponse = await hubspotService.client.get(`/crm/v3/objects/contacts/${contactId}`, {
+      params: {
+        properties: ['hs_sequence_ids'],
+      },
+    });
+    const sequenceIds = sequenceIdsResponse.data?.properties?.hs_sequence_ids?.value;
+
     res.json({
       found: true,
       email: email,
       contactId: contactId,
       enrolled: isEnrolled,
+      sequenceIds: sequenceIds || null,
       contact: {
         firstname: fullContact?.properties?.firstname || '',
         lastname: fullContact?.properties?.lastname || '',
