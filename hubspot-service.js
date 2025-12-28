@@ -90,20 +90,34 @@ class HubSpotService {
 
   /**
    * Check if contact is enrolled in any HubSpot sequence
+   * Tries multiple properties to detect sequence enrollment
    */
   async isContactEnrolledInSequence(contactId) {
     try {
-      // Get contact's hs_sequence_ids property which lists enrolled sequences
+      // Try to get properties that indicate sequence enrollment
+      // hs_sequence_ids, hs_sequence_status, and others that might exist
       const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`, {
         params: {
-          properties: ['hs_sequence_ids'],
+          properties: ['hs_sequence_ids', 'hs_sequence_status', 'hs_sequence_enrolled_date'],
+          limit: 100,
         },
       });
 
-      const sequenceIds = response.data?.properties?.hs_sequence_ids?.value;
-      const isEnrolled = !!(sequenceIds && Array.isArray(sequenceIds) && sequenceIds.length > 0);
+      const properties = response.data?.properties || {};
 
-      console.log(`Contact enrollment check - ID: ${contactId}, Enrolled: ${isEnrolled}, Sequences: ${JSON.stringify(sequenceIds) || 'none'}`);
+      // Check various properties that might indicate enrollment
+      const sequenceIds = properties.hs_sequence_ids?.value;
+      const sequenceStatus = properties.hs_sequence_status?.value;
+      const enrolledDate = properties.hs_sequence_enrolled_date?.value;
+
+      // If any of these exist and have values, contact is enrolled
+      const isEnrolled = !!(
+        (sequenceIds && Array.isArray(sequenceIds) && sequenceIds.length > 0) ||
+        (sequenceStatus && sequenceStatus !== '') ||
+        (enrolledDate && enrolledDate !== '')
+      );
+
+      console.log(`Contact enrollment check - ID: ${contactId}, Enrolled: ${isEnrolled}, SequenceIds: ${JSON.stringify(sequenceIds)}, Status: ${sequenceStatus}, EnrolledDate: ${enrolledDate}`);
       return isEnrolled;
     } catch (error) {
       console.error('HubSpot: Error checking contact enrollment:', error.message);
