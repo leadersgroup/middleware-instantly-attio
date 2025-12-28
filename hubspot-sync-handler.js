@@ -104,14 +104,38 @@ class HubSpotSyncHandler {
       }
 
       // 5. Submit to Wix form for sequence enrollment
+      // Only submit form if contact lifecycle is "lead"
+      let shouldSubmitForm = false;
       try {
-        await this.submitToWixForm(event.first_name || event.firstName || '',
-                                   event.last_name || event.lastName || '',
-                                   event.lead_email);
-        console.log(`Submitted contact to Wix form for sequence enrollment`);
+        // Re-fetch contact to get lifecycle (available via search API)
+        const contactDetails = await hubspotService.findContactByEmail(event.lead_email);
+        const lifecycleStage = contactDetails?.properties?.lifecyclestage?.value ||
+                              contactDetails?.properties?.lifecyclestage;
+
+        console.log(`Contact lifecycle stage: ${lifecycleStage || 'not set'}`);
+
+        // Only submit form if lifecycle is exactly "lead"
+        if (lifecycleStage && lifecycleStage.toLowerCase() === 'lead') {
+          console.log(`Submitting form - contact is in lead stage`);
+          shouldSubmitForm = true;
+        } else {
+          console.log(`Skipping form submission - contact is not in lead stage`);
+        }
       } catch (error) {
-        console.error('Error submitting to Wix form:', error.message);
-        // Don't fail the sync if Wix form submission fails
+        console.log(`Could not read lifecycle status, skipping form submission: ${error.message}`);
+        shouldSubmitForm = false;
+      }
+
+      if (shouldSubmitForm) {
+        try {
+          await this.submitToWixForm(event.first_name || event.firstName || '',
+                                     event.last_name || event.lastName || '',
+                                     event.lead_email);
+          console.log(`Submitted contact to Wix form for sequence enrollment`);
+        } catch (error) {
+          console.error('Error submitting to Wix form:', error.message);
+          // Don't fail the sync if Wix form submission fails
+        }
       }
 
       return {
