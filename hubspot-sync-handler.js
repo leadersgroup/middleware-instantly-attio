@@ -109,38 +109,21 @@ class HubSpotSyncHandler {
       }
 
       // 5. Submit to Wix form for sequence enrollment
-      // For new contacts: always submit
-      // For existing contacts: only submit if not already enrolled in any sequence
-      let shouldSubmitForm = isNewContact;
+      // Submit if form hasn't been submitted recently (within 5 minute cooldown)
+      const formId = 'f5425444-6422-4049-8d12-9b736221a33a';
 
-      if (!isNewContact) {
-        // Check if already enrolled in sequence
-        const isEnrolled = await hubspotService.isContactEnrolledInSequence(contactId);
-
-        if (!isEnrolled) {
-          console.log(`Existing contact not enrolled in sequence - submitting to form`);
-          shouldSubmitForm = true;
-        } else {
-          console.log(`Existing contact already enrolled in sequence - skipping form submission`);
+      try {
+        // Check if form was recently submitted to prevent duplicate submissions
+        if (!this.hasRecentFormSubmission(event.lead_email, formId)) {
+          await this.submitToWixForm(event.first_name || event.firstName || '',
+                                     event.last_name || event.lastName || '',
+                                     event.lead_email);
+          this.recordFormSubmission(event.lead_email, formId);
+          console.log(`Submitted contact to Wix form for sequence enrollment`);
         }
-      }
-
-      if (shouldSubmitForm) {
-        try {
-          const formId = 'f5425444-6422-4049-8d12-9b736221a33a';
-
-          // Check if form was recently submitted to prevent duplicate submissions
-          if (!this.hasRecentFormSubmission(event.lead_email, formId)) {
-            await this.submitToWixForm(event.first_name || event.firstName || '',
-                                       event.last_name || event.lastName || '',
-                                       event.lead_email);
-            this.recordFormSubmission(event.lead_email, formId);
-            console.log(`Submitted contact to Wix form for sequence enrollment`);
-          }
-        } catch (error) {
-          console.error('Error submitting to Wix form:', error.message);
-          // Don't fail the sync if Wix form submission fails
-        }
+      } catch (error) {
+        console.error('Error submitting to Wix form:', error.message);
+        // Don't fail the sync if Wix form submission fails
       }
 
       return {
