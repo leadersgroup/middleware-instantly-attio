@@ -39,7 +39,7 @@ class HubSpotService {
             value: email,
           }],
         }],
-        properties: ['email', 'firstname', 'lastname', 'lifecyclestage'],
+        properties: ['email', 'firstname', 'lastname', 'lifecyclestage', 'hubspot_owner_id'],
         limit: 1,
       });
       return response.data.results?.[0] || null;

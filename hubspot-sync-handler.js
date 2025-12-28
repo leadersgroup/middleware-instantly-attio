@@ -58,8 +58,20 @@ class HubSpotSyncHandler {
         console.log(`Created new contact in HubSpot: ${event.lead_email}`);
         isNewContact = true;
       } else {
-        // Contact already exists - skip reassignment, keep existing owner
-        console.log(`Found existing contact in HubSpot: ${event.lead_email} - keeping existing owner`);
+        // Contact already exists - check if assigned to a user
+        const ownerId = contact?.properties?.hubspot_owner_id?.value || contact?.properties?.hubspot_owner_id;
+        console.log(`Found existing contact in HubSpot: ${event.lead_email}`);
+
+        if (!ownerId) {
+          // No owner assigned - assign to admin
+          console.log(`Contact has no owner, assigning to admin (${config.hubspot.instantlyOwnerId})`);
+          contact = await hubspotService.updateContact(contact.id, {
+            ownerId: config.hubspot.instantlyOwnerId,
+          });
+        } else {
+          // Owner already assigned - keep existing
+          console.log(`Contact already assigned to user ${ownerId}, keeping existing owner`);
+        }
       }
 
       const contactId = contact?.id;
