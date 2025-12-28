@@ -36,6 +36,28 @@ class HubSpotSyncHandler {
     }
 
     try {
+      // For email_sent events, only find contact and create note
+      if (event.event_type === 'email_sent') {
+        const contact = await hubspotService.findContactByEmail(event.lead_email);
+
+        if (!contact) {
+          console.log(`Contact not found for email_sent event: ${event.lead_email}, skipping`);
+          return { success: false, reason: 'Contact not found' };
+        }
+
+        // Create note for email_sent event
+        const noteContent = this.formatEventNote(event);
+        await hubspotService.createNote(contact.id, noteContent, event.event_type);
+        console.log(`Created engagement note for email_sent event`);
+
+        return {
+          success: true,
+          action: 'note_created',
+          contactId: contact.id,
+        };
+      }
+
+      // For all other events, proceed with full sync logic
       // 1. Map Instantly event to valid HubSpot status
       const hubspotStatus = EVENT_TO_HUBSPOT_STATUS[event.event_type] ||
                            config.fieldMappings?.instantlyToHubspot?.[event.event_type] ||
@@ -100,7 +122,6 @@ class HubSpotSyncHandler {
 
       // 4. Create detailed note for significant events
       const significantEvents = [
-        'email_sent',
         'reply_received',
         'lead_interested',
         'lead_not_interested',
