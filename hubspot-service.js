@@ -72,11 +72,11 @@ class HubSpotService {
    */
   async getContact(contactId) {
     try {
-      // Fetch contact with specific properties we need
+      // Fetch contact - don't filter properties, let HubSpot return all available
+      // This ensures we get lifecyclestage and other properties if they exist
       const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`, {
         params: {
-          properties: ['firstname', 'lastname', 'email', 'lifecyclestage'],
-          limit: 100,
+          limit: 500,  // Increase limit to get more properties
         },
       });
       return response.data || null;
