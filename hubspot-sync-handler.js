@@ -121,8 +121,13 @@ class HubSpotSyncHandler {
       try {
         // Re-fetch contact to get lifecycle (available via search API)
         const contactDetails = await hubspotService.findContactByEmail(event.lead_email);
-        const lifecycleStage = contactDetails?.properties?.lifecyclestage?.value ||
-                              contactDetails?.properties?.lifecyclestage;
+        let lifecycleStage = contactDetails?.properties?.lifecyclestage?.value ||
+                            contactDetails?.properties?.lifecyclestage;
+
+        // If lifecycle is an enum ID (numeric), convert to label
+        if (lifecycleStage && !isNaN(lifecycleStage)) {
+          lifecycleStage = await hubspotService.getPropertyEnumValue('lifecyclestage', lifecycleStage);
+        }
 
         console.log(`Contact lifecycle stage: ${lifecycleStage || 'not set'}`);
 
