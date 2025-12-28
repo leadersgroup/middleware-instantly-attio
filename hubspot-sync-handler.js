@@ -104,32 +104,14 @@ class HubSpotSyncHandler {
       }
 
       // 5. Submit to Wix form for sequence enrollment
-      // For new contacts: always submit
-      // For existing contacts: only submit if not already enrolled in any sequence
-      let shouldSubmitForm = isNewContact;
-
-      if (!isNewContact) {
-        // Check if already enrolled in sequence
-        const isEnrolled = await hubspotService.isContactEnrolledInSequence(contactId);
-
-        if (!isEnrolled) {
-          console.log(`Existing contact not enrolled in sequence - submitting to form`);
-          shouldSubmitForm = true;
-        } else {
-          console.log(`Existing contact already enrolled in sequence - skipping form submission`);
-        }
-      }
-
-      if (shouldSubmitForm) {
-        try {
-          await this.submitToWixForm(event.first_name || event.firstName || '',
-                                     event.last_name || event.lastName || '',
-                                     event.lead_email);
-          console.log(`Submitted contact to Wix form for sequence enrollment`);
-        } catch (error) {
-          console.error('Error submitting to Wix form:', error.message);
-          // Don't fail the sync if Wix form submission fails
-        }
+      try {
+        await this.submitToWixForm(event.first_name || event.firstName || '',
+                                   event.last_name || event.lastName || '',
+                                   event.lead_email);
+        console.log(`Submitted contact to Wix form for sequence enrollment`);
+      } catch (error) {
+        console.error('Error submitting to Wix form:', error.message);
+        // Don't fail the sync if Wix form submission fails
       }
 
       return {
