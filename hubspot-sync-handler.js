@@ -116,7 +116,7 @@ class HubSpotSyncHandler {
       }
 
       // 5. Submit to Wix form for sequence enrollment
-      // Only submit form if contact lifecycle is "lead"
+      // Submit form if contact lifecycle is "lead" or "lead-attempted"
       let shouldSubmitForm = false;
       try {
         // Re-fetch contact to get lifecycle (available via search API)
@@ -126,12 +126,13 @@ class HubSpotSyncHandler {
 
         console.log(`Contact lifecycle stage: ${lifecycleStage || 'not set'}`);
 
-        // Only submit form if lifecycle is exactly "lead"
-        if (lifecycleStage && lifecycleStage.toLowerCase() === 'lead') {
-          console.log(`Submitting form - contact is in lead stage`);
+        // Submit form if lifecycle is "lead" or "lead-attempted"
+        const stageLower = lifecycleStage?.toLowerCase();
+        if (stageLower === 'lead' || stageLower === 'lead-attempted') {
+          console.log(`Submitting form - contact is in ${lifecycleStage} stage`);
           shouldSubmitForm = true;
         } else {
-          console.log(`Skipping form submission - contact is not in lead stage`);
+          console.log(`Skipping form submission - contact is not in lead or lead-attempted stage`);
         }
       } catch (error) {
         console.log(`Could not read lifecycle status, skipping form submission: ${error.message}`);
