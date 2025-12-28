@@ -234,7 +234,7 @@ class HubSpotSyncHandler {
   formatEventNote(event) {
     const isHotLead = ['reply_received', 'lead_interested', 'lead_meeting_booked'].includes(event.event_type);
     const emoji = isHotLead ? '🔥' : '📧';
-    const title = isHotLead ? 'HOT LEAD' : 'Campaign Event';
+    const title = isHotLead ? 'HOT LEAD' : 'Instantly Campaign Event';
 
     let html = `<h3>${emoji} ${title} - ${event.event_type}</h3>`;
 
