@@ -115,7 +115,14 @@ class HubSpotSyncHandler {
         // Fetch full contact details to get current lifecycle (findContactByEmail returns minimal data)
         const fullContact = await hubspotService.getContact(contactId);
         console.log(`Full contact response: ${JSON.stringify(fullContact, null, 2)}`);
-        const currentLifecycle = fullContact?.properties?.lifecyclestage?.value || fullContact?.properties?.lifecyclestage || '';
+
+        // Get lifecycle - handle multiple response formats:
+        // 1. Nested .value format: lifecyclestage?.value
+        // 2. Direct string format: lifecyclestage (raw value)
+        // 3. Missing property: treat as 'lead' (default state in HubSpot)
+        const currentLifecycle = fullContact?.properties?.lifecyclestage?.value ||
+                                 fullContact?.properties?.lifecyclestage ||
+                                 'lead';  // Default to 'lead' if not set
         console.log(`Current lifecycle extracted: ${currentLifecycle}`);
 
         if (!isEnrolled && currentLifecycle?.toLowerCase?.() === 'lead') {
