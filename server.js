@@ -272,6 +272,61 @@ app.get('/verify/contact', async (req, res) => {
 });
 
 /**
+ * Debug endpoint - Get all properties for a contact
+ */
+app.get('/debug/contact-properties', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'email query parameter is required' });
+    }
+
+    console.log(`\n[DEBUG] Getting all properties for ${email}`);
+    const hubspotService = require('./hubspot-service');
+
+    // Find contact by email
+    const contact = await hubspotService.findContactByEmail(email);
+    if (!contact) {
+      return res.json({
+        found: false,
+        email: email,
+        message: 'Contact not found in HubSpot',
+      });
+    }
+
+    const contactId = contact.id;
+
+    // Get contact with NO property filter to see all available properties
+    const allPropsResponse = await hubspotService.client.get(`/crm/v3/objects/contacts/${contactId}`);
+    const allProps = allPropsResponse.data?.properties || {};
+
+    // Filter for sequence-related properties
+    const sequenceRelatedProps = {};
+    for (const [key, value] of Object.entries(allProps)) {
+      if (key.toLowerCase().includes('sequence') || key.toLowerCase().includes('automation')) {
+        sequenceRelatedProps[key] = value?.value || value;
+      }
+    }
+
+    res.json({
+      found: true,
+      email: email,
+      contactId: contactId,
+      sequenceRelatedProperties: sequenceRelatedProps,
+      allPropertiesCount: Object.keys(allProps).length,
+      allPropertyNames: Object.keys(allProps).sort(),
+    });
+  } catch (error) {
+    console.error('Error getting contact properties:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
  * Test endpoint - simulate Instantly event
  */
 app.post('/test/instantly', async (req, res) => {
