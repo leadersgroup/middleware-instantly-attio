@@ -114,7 +114,9 @@ class HubSpotSyncHandler {
 
         // Fetch full contact details to get current lifecycle (findContactByEmail returns minimal data)
         const fullContact = await hubspotService.getContact(contactId);
+        console.log(`Full contact response: ${JSON.stringify(fullContact, null, 2)}`);
         const currentLifecycle = fullContact?.properties?.lifecyclestage?.value || fullContact?.properties?.lifecyclestage || '';
+        console.log(`Current lifecycle extracted: ${currentLifecycle}`);
 
         if (!isEnrolled && currentLifecycle?.toLowerCase?.() === 'lead') {
           console.log(`Existing contact eligible for re-enrollment: not enrolled, lifecycle is 'lead'`);

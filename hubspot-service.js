@@ -102,9 +102,9 @@ class HubSpotService {
       });
 
       const sequenceIds = response.data?.properties?.hs_sequence_ids?.value;
-      const isEnrolled = sequenceIds && Array.isArray(sequenceIds) && sequenceIds.length > 0;
+      const isEnrolled = !!(sequenceIds && Array.isArray(sequenceIds) && sequenceIds.length > 0);
 
-      console.log(`Contact enrollment check - ID: ${contactId}, Enrolled: ${isEnrolled}, Sequences: ${sequenceIds || 'none'}`);
+      console.log(`Contact enrollment check - ID: ${contactId}, Enrolled: ${isEnrolled}, Sequences: ${JSON.stringify(sequenceIds) || 'none'}`);
       return isEnrolled;
     } catch (error) {
       console.error('HubSpot: Error checking contact enrollment:', error.message);
