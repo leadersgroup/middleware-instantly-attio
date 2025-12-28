@@ -105,31 +105,18 @@ class HubSpotSyncHandler {
 
       // 5. Submit to Wix form for sequence enrollment
       // For new contacts: always submit
-      // For existing contacts: only submit if not already enrolled AND lifecycle is 'lead'
+      // For existing contacts: only submit if not already enrolled in any sequence
       let shouldSubmitForm = isNewContact;
 
       if (!isNewContact) {
-        // Check if already enrolled in sequence and get current lifecycle
+        // Check if already enrolled in sequence
         const isEnrolled = await hubspotService.isContactEnrolledInSequence(contactId);
 
-        // Fetch full contact details to get current lifecycle (findContactByEmail returns minimal data)
-        const fullContact = await hubspotService.getContact(contactId);
-        console.log(`Full contact response: ${JSON.stringify(fullContact, null, 2)}`);
-
-        // Get lifecycle - handle multiple response formats:
-        // 1. Nested .value format: lifecyclestage?.value
-        // 2. Direct string format: lifecyclestage (raw value)
-        // 3. Missing property: treat as 'lead' (default state in HubSpot)
-        const currentLifecycle = fullContact?.properties?.lifecyclestage?.value ||
-                                 fullContact?.properties?.lifecyclestage ||
-                                 'lead';  // Default to 'lead' if not set
-        console.log(`Current lifecycle extracted: ${currentLifecycle}`);
-
-        if (!isEnrolled && currentLifecycle?.toLowerCase?.() === 'lead') {
-          console.log(`Existing contact eligible for re-enrollment: not enrolled, lifecycle is 'lead'`);
+        if (!isEnrolled) {
+          console.log(`Existing contact not enrolled in sequence - submitting to form`);
           shouldSubmitForm = true;
         } else {
-          console.log(`Existing contact skipped form submission: enrolled=${isEnrolled}, lifecycle=${currentLifecycle}`);
+          console.log(`Existing contact already enrolled in sequence - skipping form submission`);
         }
       }
 
