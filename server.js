@@ -207,6 +207,58 @@ app.post('/setup/webhook', async (req, res) => {
 });
 
 /**
+ * Verify endpoint - Check contact enrollment status in HubSpot
+ */
+app.get('/verify/contact', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'email query parameter is required' });
+    }
+
+    console.log(`\n[VERIFY] Checking enrollment status for ${email}`);
+    const hubspotService = require('./hubspot-service');
+
+    // Find contact by email
+    const contact = await hubspotService.findContactByEmail(email);
+    if (!contact) {
+      return res.json({
+        found: false,
+        email: email,
+        message: 'Contact not found in HubSpot',
+      });
+    }
+
+    const contactId = contact.id;
+
+    // Get full contact details
+    const fullContact = await hubspotService.getContact(contactId);
+
+    // Check if enrolled in sequence
+    const isEnrolled = await hubspotService.isContactEnrolledInSequence(contactId);
+
+    res.json({
+      found: true,
+      email: email,
+      contactId: contactId,
+      enrolled: isEnrolled,
+      contact: {
+        firstname: fullContact?.properties?.firstname || '',
+        lastname: fullContact?.properties?.lastname || '',
+        email: fullContact?.properties?.email || '',
+      },
+    });
+  } catch (error) {
+    console.error('Error verifying contact:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
  * Test endpoint - simulate Instantly event
  */
 app.post('/test/instantly', async (req, res) => {
