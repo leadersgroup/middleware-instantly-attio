@@ -90,6 +90,30 @@ class HubSpotService {
   }
 
   /**
+   * Check if contact is enrolled in any HubSpot sequence
+   */
+  async isContactEnrolledInSequence(contactId) {
+    try {
+      // Get contact's hs_sequence_ids property which lists enrolled sequences
+      const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`, {
+        params: {
+          properties: ['hs_sequence_ids'],
+        },
+      });
+
+      const sequenceIds = response.data?.properties?.hs_sequence_ids?.value;
+      const isEnrolled = sequenceIds && Array.isArray(sequenceIds) && sequenceIds.length > 0;
+
+      console.log(`Contact enrollment check - ID: ${contactId}, Enrolled: ${isEnrolled}, Sequences: ${sequenceIds || 'none'}`);
+      return isEnrolled;
+    } catch (error) {
+      console.error('HubSpot: Error checking contact enrollment:', error.message);
+      // Default to false on error (assume not enrolled)
+      return false;
+    }
+  }
+
+  /**
    * Create or update contact in HubSpot
    */
   async upsertContact(contactData) {

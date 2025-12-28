@@ -103,8 +103,25 @@ class HubSpotSyncHandler {
         console.log(`Created engagement note for ${event.event_type}`);
       }
 
-      // 5. Submit new contact to Wix form for sequence enrollment
-      if (isNewContact) {
+      // 5. Submit to Wix form for sequence enrollment
+      // For new contacts: always submit
+      // For existing contacts: only submit if not already enrolled AND lifecycle is 'lead'
+      let shouldSubmitForm = isNewContact;
+
+      if (!isNewContact) {
+        // Check if already enrolled in sequence and get current lifecycle
+        const isEnrolled = await hubspotService.isContactEnrolledInSequence(contactId);
+        const currentLifecycle = contact.properties?.lifecyclestage?.value || contact.properties?.lifecyclestage || '';
+
+        if (!isEnrolled && currentLifecycle?.toLowerCase?.() === 'lead') {
+          console.log(`Existing contact eligible for re-enrollment: not enrolled, lifecycle is 'lead'`);
+          shouldSubmitForm = true;
+        } else {
+          console.log(`Existing contact skipped form submission: enrolled=${isEnrolled}, lifecycle=${currentLifecycle}`);
+        }
+      }
+
+      if (shouldSubmitForm) {
         try {
           await this.submitToWixForm(event.first_name || event.firstName || '',
                                      event.last_name || event.lastName || '',
