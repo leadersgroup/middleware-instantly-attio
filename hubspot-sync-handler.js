@@ -122,10 +122,16 @@ class HubSpotSyncHandler {
 
       if (shouldSubmitForm) {
         try {
-          await this.submitToWixForm(event.first_name || event.firstName || '',
-                                     event.last_name || event.lastName || '',
-                                     event.lead_email);
-          console.log(`Submitted contact to Wix form for sequence enrollment`);
+          const formId = 'f5425444-6422-4049-8d12-9b736221a33a';
+
+          // Check if form was recently submitted to prevent duplicate submissions
+          if (!this.hasRecentFormSubmission(event.lead_email, formId)) {
+            await this.submitToWixForm(event.first_name || event.firstName || '',
+                                       event.last_name || event.lastName || '',
+                                       event.lead_email);
+            this.recordFormSubmission(event.lead_email, formId);
+            console.log(`Submitted contact to Wix form for sequence enrollment`);
+          }
         } catch (error) {
           console.error('Error submitting to Wix form:', error.message);
           // Don't fail the sync if Wix form submission fails
