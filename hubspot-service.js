@@ -75,7 +75,7 @@ class HubSpotService {
       // Fetch contact with specific properties we need
       const response = await this.client.get(`/crm/v3/objects/contacts/${contactId}`, {
         params: {
-          properties: ['firstname', 'lastname', 'email'],
+          properties: ['firstname', 'lastname', 'email', 'lifecyclestage'],
           limit: 100,
         },
       });

@@ -111,7 +111,10 @@ class HubSpotSyncHandler {
       if (!isNewContact) {
         // Check if already enrolled in sequence and get current lifecycle
         const isEnrolled = await hubspotService.isContactEnrolledInSequence(contactId);
-        const currentLifecycle = contact.properties?.lifecyclestage?.value || contact.properties?.lifecyclestage || '';
+
+        // Fetch full contact details to get current lifecycle (findContactByEmail returns minimal data)
+        const fullContact = await hubspotService.getContact(contactId);
+        const currentLifecycle = fullContact?.properties?.lifecyclestage?.value || fullContact?.properties?.lifecyclestage || '';
 
         if (!isEnrolled && currentLifecycle?.toLowerCase?.() === 'lead') {
           console.log(`Existing contact eligible for re-enrollment: not enrolled, lifecycle is 'lead'`);
