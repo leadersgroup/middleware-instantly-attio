@@ -17,6 +17,11 @@ const EVENT_TO_HUBSPOT_STATUS = {
   'lead_not_interested': 'BAD_TIMING',
 };
 
+// Track form submissions to prevent duplicate submissions within a time window
+// Format: { email: { formId: timestamp } }
+const recentFormSubmissions = {};
+const FORM_SUBMISSION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
 class HubSpotSyncHandler {
   /**
    * Handle incoming Instantly webhook event
@@ -122,10 +127,16 @@ class HubSpotSyncHandler {
 
       if (shouldSubmitForm) {
         try {
-          await this.submitToWixForm(event.first_name || event.firstName || '',
-                                     event.last_name || event.lastName || '',
-                                     event.lead_email);
-          console.log(`Submitted contact to Wix form for sequence enrollment`);
+          const formId = 'f5425444-6422-4049-8d12-9b736221a33a';
+
+          // Check if form was recently submitted to prevent duplicate submissions
+          if (!this.hasRecentFormSubmission(event.lead_email, formId)) {
+            await this.submitToWixForm(event.first_name || event.firstName || '',
+                                       event.last_name || event.lastName || '',
+                                       event.lead_email);
+            this.recordFormSubmission(event.lead_email, formId);
+            console.log(`Submitted contact to Wix form for sequence enrollment`);
+          }
         } catch (error) {
           console.error('Error submitting to Wix form:', error.message);
           // Don't fail the sync if Wix form submission fails
@@ -405,8 +416,22 @@ class HubSpotSyncHandler {
               continue;
             }
 
+            // Check if form was recently submitted to prevent duplicate submissions
+            if (this.hasRecentFormSubmission(email, formConfig.formId)) {
+              console.log(`Skipping form submission - already submitted recently`);
+              results.push({
+                contactId: objectId,
+                success: true,
+                action: `skipped_${formConfig.action}`,
+                email: email,
+                reason: 'Already submitted recently',
+              });
+              continue;
+            }
+
             // Submit to appropriate form
             await this.submitToHubSpotForm(firstName, lastName, email, formConfig.formId);
+            this.recordFormSubmission(email, formConfig.formId);
 
             console.log(`Submitted contact ${email} to ${formConfig.description}`);
 
@@ -484,6 +509,37 @@ class HubSpotSyncHandler {
       console.error(`Error submitting to form ${formId}:`, error.message);
       throw error;
     }
+  }
+
+  /**
+   * Check if a form was recently submitted for this email
+   * Prevents duplicate form submissions within cooldown period
+   */
+  hasRecentFormSubmission(email, formId) {
+    const now = Date.now();
+    if (!recentFormSubmissions[email]) {
+      return false;
+    }
+    const lastSubmissionTime = recentFormSubmissions[email][formId];
+    if (!lastSubmissionTime) {
+      return false;
+    }
+    const timeSinceLastSubmission = now - lastSubmissionTime;
+    const hasRecentSubmission = timeSinceLastSubmission < FORM_SUBMISSION_COOLDOWN_MS;
+    if (hasRecentSubmission) {
+      console.log(`Form ${formId} was recently submitted for ${email} (${Math.round(timeSinceLastSubmission / 1000)}s ago), skipping`);
+    }
+    return hasRecentSubmission;
+  }
+
+  /**
+   * Record a form submission for tracking duplicates
+   */
+  recordFormSubmission(email, formId) {
+    if (!recentFormSubmissions[email]) {
+      recentFormSubmissions[email] = {};
+    }
+    recentFormSubmissions[email][formId] = Date.now();
   }
 
   /**
